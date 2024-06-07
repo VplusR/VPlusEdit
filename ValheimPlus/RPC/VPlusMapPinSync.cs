@@ -1,4 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using UnityEngine;
+using ValheimPlus.GameClasses;
 
 namespace ValheimPlus.RPC
 {
@@ -11,9 +16,65 @@ namespace ValheimPlus.RPC
         {
             if (ZNet.m_isServer) //Server
             {
-                if (sender == ZRoutedRpc.instance.GetServerPeerID()) return;
-
                 if (mapPinPkg == null) return;
+
+                if (sender == ZRoutedRpc.instance.GetServerPeerID())
+                {
+                    // should append to sharedMapPins
+                    List<MapPinData> pinList = new List<MapPinData>();  
+                    
+                    int pinCount = mapPinPkg.ReadInt();
+                    for (int i = 0; i < pinCount; i++)
+                    {
+                        long senderID = mapPinPkg.ReadLong();
+                        string senderName = mapPinPkg.ReadString();
+                        float posX = mapPinPkg.ReadSingle();
+                        float posY = mapPinPkg.ReadSingle();
+                        float posZ = mapPinPkg.ReadSingle();
+                        int pinType = mapPinPkg.ReadInt();
+                        string pinName = mapPinPkg.ReadString();
+                        bool keepQuiet = mapPinPkg.ReadBool();
+
+                        MapPinData pinData = new MapPinData
+                        {
+                            SenderID = senderID,
+                            SenderName = senderName,
+                            Position = new Vector3(posX, posY, posZ),
+                            PinType = pinType,
+                            PinName = pinName,
+                            KeepQuiet = keepQuiet
+                        };
+
+                        pinList.Add(pinData);
+                    }                    
+
+                    try
+                    {
+                        using (StreamWriter writer = new StreamWriter(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, true, Encoding.UTF8))
+                        {
+                            writer.WriteLine("SenderID,SenderName,PositionX,PositionY,PositionZ,PinType,PinName,KeepQuiet");
+
+                            foreach (var pin in pinList)
+                            {
+                                var newLine = string.Format("{0},{1},{2},{3},{4},{5},{6},{7}",
+                                    pin.SenderID,
+                                    pin.SenderName,
+                                    pin.Position.x,
+                                    pin.Position.y,
+                                    pin.Position.z,
+                                    pin.PinType,
+                                    pin.PinName,
+                                    pin.KeepQuiet);
+                                writer.WriteLine(newLine);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle exceptions (e.g., logging)
+                        ValheimPlusPlugin.Logger.LogInfo("An error occurred while saving pins: " + ex.Message);
+                    }
+                }                
 
                 foreach(ZNetPeer peer in ZRoutedRpc.instance.m_peers)
                 {

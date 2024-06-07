@@ -79,12 +79,12 @@ namespace ValheimPlus.GameClasses
 
     public static class MapPinEditor_Patches
     {
-        public static GameObject pinEditorPanel;
-        public static AssetBundle mapPinBundle = null;
-        public static Dropdown iconSelected;
-        public static InputField pinName;
-        public static Toggle sharePin;
-        public static Vector3 pinPos;
+        //public static GameObject pinEditorPanel;
+        //public static AssetBundle mapPinBundle = null;
+        //public static Dropdown iconSelected;
+        //public static InputField pinName;
+        //public static Toggle sharePin;
+        //public static Vector3 pinPos;
 
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
         public static class Minimap_AddPin_Patch
