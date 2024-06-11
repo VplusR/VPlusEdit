@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -74,6 +75,102 @@ namespace ValheimPlus.GameClasses
             return instructions;
         }
     }
+
+    [HarmonyPatch(typeof(ZNet), "Start")]
+    public static class ZNet_Start_Patch
+    {
+        public static void Postfix(ZNet __instance)
+        {
+            if (ZNet.m_isServer)
+            {
+                __instance.StartCoroutine(MapPinSync.CheckConnectedPlayers());
+            }
+        }
+    }
+
+    public static class MapPinSync
+    {
+        private static HashSet<long> playersWithPinsSent = new HashSet<long>();
+
+        public static IEnumerator CheckConnectedPlayers()
+        {
+            if (ZNet.instance.GetPeers().Count == 0 || ZNet.instance.GetPeers() == null)
+            {
+                ValheimPlusPlugin.Logger.LogInfo("Peer Count is 0 or null");
+            }
+
+            while (true)
+            {
+                ValheimPlusPlugin.Logger.LogInfo("Waiting 2 secs to check connected peers.");
+
+                yield return new WaitForSeconds(2); // Adjust the delay as needed
+
+                try
+                {
+                    var peers = ZNet.instance.GetPeers();
+                    if (peers != null)
+                    {
+                        foreach (var peer in peers)
+                        {
+                            long playerId = peer.m_uid;
+
+                            // Skip players with ID 0 (assuming 0 indicates uninitialized player ID)
+                            if (playerId == 0)
+                            {
+                                continue;
+                            }
+
+                            if (!playersWithPinsSent.Contains(playerId))
+                            {
+                                SendPinsToPlayer(playerId);
+                                playersWithPinsSent.Add(playerId);
+                            }
+                        }
+                    }
+
+                }
+                catch (Exception e)
+                {
+                    ValheimPlusPlugin.Logger.LogError($"Thrown Exception");
+                }
+            }
+        }
+
+        private static void SendPinsToPlayer(long playerId)
+        {
+            ValheimPlusPlugin.Logger.LogInfo("Sending stored map pins to player ID: " + playerId);
+
+            int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
+            ValheimPlusPlugin.Logger.LogInfo($"Count is {count}.");
+
+            foreach (var pinDataPackage in ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins)
+            {
+                ZPackage packageToSend = new ZPackage();
+                packageToSend.Write(pinDataPackage);
+
+                ZRoutedRpc.instance.InvokeRoutedRPC(playerId, "VPlusMapAddPin", new object[] { packageToSend });
+            }
+        }
+
+        public static void PlayerDisconnected(long playerId)
+        {
+            playersWithPinsSent.Remove(playerId);
+            ValheimPlusPlugin.Logger.LogInfo("Player disconnected, removed ID from set: " + playerId);
+        }
+    }
+
+    /*[HarmonyPatch(typeof(ZNet), "Disconnect")]
+    public static class ZNet_Disconnect_Patch
+    {
+        public static void Prefix(ZNet __instance, ZNetPeer peer)
+        {
+            if (ZNet.m_isServer && peer.m_uid != null)
+            {
+                var playerId = peer.m_uid;
+                MapPinSync.PlayerDisconnected(playerId);
+            }
+        }
+    }*/
 
     /// <summary>
     /// Load settngs from server instance
@@ -156,5 +253,5 @@ namespace ValheimPlus.GameClasses
                 }
             }
         }
-    }
+    }    
 }

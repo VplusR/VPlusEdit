@@ -1,14 +1,22 @@
-﻿using HarmonyLib;
+﻿using GUIFramework;
+using HarmonyLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using ValheimPlus.Configurations;
 using ValheimPlus.RPC;
 using ValheimPlus.Utility;
+using static Minimap;
+using static System.Net.Mime.MediaTypeNames;
 using Random = UnityEngine.Random;
 
 // ToDo add packet system to convey map markers
@@ -78,175 +86,130 @@ namespace ValheimPlus.GameClasses
     }
 
     public static class MapPinEditor_Patches
-    {
-        //public static GameObject pinEditorPanel;
-        //public static AssetBundle mapPinBundle = null;
-        //public static Dropdown iconSelected;
-        //public static InputField pinName;
-        //public static Toggle sharePin;
-        //public static Vector3 pinPos;
-
+    {       
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
         public static class Minimap_AddPin_Patch
         {
-            public static List<Minimap.PinType> shareablePins = new List<Minimap.PinType>();
-
             private static void Postfix(ref Minimap __instance, ref Minimap.PinData __result)
-            {
+            {     
                 if (Configuration.Current.Map.IsEnabled && Configuration.Current.Map.shareAllPins)
-                    if (shareablePins.Contains(__result.m_type))
+                {
+                    if (new List<Minimap.PinType> { Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4 }.Contains(__result.m_type))
                     {
-                        if (__instance.m_mode != Minimap.MapMode.Large)
-                            VPlusMapPinSync.SendMapPinToServer(__result, true);
-                        else
-                            VPlusMapPinSync.SendMapPinToServer(__result);
-                    }
-            }
-        }
+                        Vector3 pos = __result.m_pos;
+                        Minimap.PinType type = __result.m_type;
+                        string name = __result.m_name;
 
+                        ValheimPlusPlugin.Logger.LogInfo($"Pin Text: {name} or {__result.m_name}");
+
+                        if (__instance.m_mode != Minimap.MapMode.Large)
+                        {
+                            ValheimPlusPlugin.Logger.LogInfo("Sent to server with bool");
+                            VPlusMapPinSync.SendMapPinToServer(pos, type, name, true);                                
+                        }
+                        else
+                        {
+                            ValheimPlusPlugin.Logger.LogInfo("Sent to server without bool");
+                            VPlusMapPinSync.SendMapPinToServer(pos, type, name);                                
+                        }                        
+                    }
+                }
+            }            
+        }   
 
         /// <summary>
         /// Below is the code for the retired Vplus pin share system, i (nx) plan on working with this a little more when i get to it and have a plan on how i would like to change this.
         /// This will require some more days/weeks until i get to it, sorry.
         /// </summary>
 
-        /*
-        [HarmonyPatch(typeof(Minimap), "Awake")]
+        /*[HarmonyPatch(typeof(Minimap), "Awake")]
         public static class MapPinEditor_Patches_Awake
         {
-            public static void AddPin(ref Minimap __instance)
-            {
-                Minimap.PinType pintype = iconSelected.value == 4 ? Minimap.PinType.Icon4 : (Minimap.PinType)iconSelected.value;
-                Minimap.PinData addedPin = __instance.AddPin(pinPos, pintype, pinName.text, true, false);
-                if (Configuration.Current.Map.shareablePins && sharePin.isOn && !Configuration.Current.Map.shareAllPins)
-                    VPlusMapPinSync.SendMapPinToServer(addedPin);
-                pinEditorPanel.SetActive(false);
-                __instance.m_wasFocused = false;
-            }
-
             private static void Postfix(ref Minimap __instance)
             {
-                if (Configuration.Current.Map.IsEnabled)
+                // Ensure the InputField is properly initialized
+                if (__instance.m_nameInput == null)
                 {
-                    Minimap_AddPin_Patch.shareablePins = new List<Minimap.PinType>() { 
-                        Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, 
-                        Minimap.PinType.Icon3, Minimap.PinType.Icon4 };
-                    GameObject iconPanelOld = GameObjectAssistant.GetChildComponentByName<Transform>("IconPanel", __instance.m_largeRoot).gameObject;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        GameObjectAssistant.GetChildComponentByName<Transform>("Icon" + i.ToString(), iconPanelOld).gameObject.SetActive(false);
-                    }
-                    GameObjectAssistant.GetChildComponentByName<Transform>("Bkg", iconPanelOld).gameObject.SetActive(false);
-                    iconPanelOld.SetActive(false);
-                    __instance.m_nameInput.gameObject.SetActive(false);
-                    if (mapPinBundle == null)
-                    {
-                        mapPinBundle = AssetBundle.LoadFromStream(EmbeddedAsset.LoadEmbeddedAsset("Assets.Bundles.map-pin-ui"));
-                    }
-                    GameObject pinEditorPanelParent = mapPinBundle.LoadAsset<GameObject>("MapPinEditor");
-                    pinEditorPanel = GameObject.Instantiate(pinEditorPanelParent.transform.GetChild(0).gameObject);
-                    pinEditorPanel.transform.SetParent(__instance.m_largeRoot.transform, false);
-                    pinEditorPanel.SetActive(false);
+                    GameObject inputFieldObj = new GameObject("PinNameInputField");
+                    inputFieldObj.transform.SetParent(__instance.transform);
 
-                    pinName = pinEditorPanel.GetComponentInChildren<InputField>();
-                    if (pinName != null)
-                        ValheimPlusPlugin.logger.LogInfo("Pin Name loaded properly");
-                    Minimap theInstance = __instance;
-                    GameObjectAssistant.GetChildComponentByName<Transform>("OK", pinEditorPanel).gameObject.GetComponent<Button>().onClick.AddListener(delegate { AddPin(ref theInstance); });
-                    GameObjectAssistant.GetChildComponentByName<Transform>("Cancel", pinEditorPanel).gameObject.GetComponent<Button>().onClick.AddListener(delegate { Minimap.instance.m_wasFocused = false; pinEditorPanel.SetActive(false); });
-                    iconSelected = pinEditorPanel.GetComponentInChildren<Dropdown>();
-                    iconSelected.options.Clear();
-                    int ind = 0;
-                    List<string> list = new List<string> { "Fire", "Home", "Hammer", "Circle", "Rune" };
-                    foreach (string option in list)
-                    {
-                        iconSelected.options.Add(new Dropdown.OptionData(option, Minimap.instance.m_icons[ind].m_icon));
-                        ind++;
-                    }
-                    if (iconSelected != null)
-                        ValheimPlusPlugin.logger.LogInfo("Dropdown loaded properly");
-                    sharePin = pinEditorPanel.GetComponentInChildren<Toggle>();
-                    if (sharePin != null)
-                        ValheimPlusPlugin.logger.LogInfo("Share pin loaded properly");
-                    if (!Configuration.Current.Map.shareablePins || Configuration.Current.Map.shareAllPins)
-                        sharePin.gameObject.SetActive(false);
+                    InputField inputField = inputFieldObj.AddComponent<InputField>();
+                    RectTransform rectTransform = inputFieldObj.GetComponent<RectTransform>();
+                    rectTransform.sizeDelta = new Vector2(200, 30);
+                    rectTransform.anchoredPosition = Vector2.zero;
+
+                    // Create separate Text components for text and placeholder
+                    Text textComponent = inputFieldObj.AddComponent<Text>();
+                    Text placeholderComponent = new GameObject("Placeholder").AddComponent<Text>();
+                    placeholderComponent.transform.SetParent(inputFieldObj.transform);
+
+                    // Assign the fonts and colors
+                    textComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    textComponent.color = Color.black;
+                    placeholderComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    placeholderComponent.color = Color.gray;
+
+                    // Assign placeholder text
+                    placeholderComponent.text = "Enter Pin Name";
+
+                    // Configure the InputField
+                    inputField.textComponent = textComponent;
+                    inputField.placeholder = placeholderComponent;
+
+                    __instance.m_nameInput = Minimap.m_instance.m_nameInput;
                 }
             }
-        }
-        */
+        }*/
 
-        /*
-        [HarmonyPatch(typeof(Minimap), "OnMapDblClick")]
+        /*[HarmonyPatch(typeof(Minimap), "OnMapDblClick")]
         public static class MapPinEditor_Patches_OnMapDblClick
         {
             private static bool Prefix(ref Minimap __instance)
             {
                 if (Configuration.Current.Map.IsEnabled)
                 {
-                    if(pinEditorPanel == null)
+                    // Ensure shareablePins are set
+                    Minimap_AddPin_Patch.shareablePins = new List<Minimap.PinType>()
                     {
-                        Minimap_AddPin_Patch.shareablePins = new List<Minimap.PinType>() {
                         Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2,
-                        Minimap.PinType.Icon3, Minimap.PinType.Icon4 };
-                        GameObject iconPanelOld = GameObjectAssistant.GetChildComponentByName<Transform>("IconPanel", __instance.m_largeRoot).gameObject;
-                        for (int i = 0; i < 5; i++)
-                        {
-                            GameObjectAssistant.GetChildComponentByName<Transform>("Icon" + i.ToString(), iconPanelOld).gameObject.SetActive(false);
-                        }
-                        GameObjectAssistant.GetChildComponentByName<Transform>("Bkg", iconPanelOld).gameObject.SetActive(false);
-                        iconPanelOld.SetActive(false);
-                        __instance.m_nameInput.gameObject.SetActive(false);
-                        if (mapPinBundle == null)
-                        {
-                            mapPinBundle = AssetBundle.LoadFromStream(EmbeddedAsset.LoadEmbeddedAsset("Assets.Bundles.map-pin-ui"));
-                        }
-                        GameObject pinEditorPanelParent = mapPinBundle.LoadAsset<GameObject>("MapPinEditor");
-                        pinEditorPanel = GameObject.Instantiate(pinEditorPanelParent.transform.GetChild(0).gameObject);
-                        pinEditorPanel.transform.SetParent(__instance.m_largeRoot.transform, false);
-                        pinEditorPanel.SetActive(false);
+                        Minimap.PinType.Icon3, Minimap.PinType.Icon4
+                    };
 
-                        pinName = pinEditorPanel.GetComponentInChildren<InputField>();
-                        if (pinName != null)
-                            ValheimPlusPlugin.logger.LogInfo("Pin Name loaded properly");
-                        Minimap theInstance = __instance;
-                        GameObjectAssistant.GetChildComponentByName<Transform>("OK", pinEditorPanel).gameObject.GetComponent<Button>().onClick.AddListener(delegate { MapPinEditor_Patches_Awake.AddPin(ref theInstance); });
-                        GameObjectAssistant.GetChildComponentByName<Transform>("Cancel", pinEditorPanel).gameObject.GetComponent<Button>().onClick.AddListener(delegate { Minimap.instance.m_wasFocused = false; pinEditorPanel.SetActive(false); });
-                        iconSelected = pinEditorPanel.GetComponentInChildren<Dropdown>();
-                        iconSelected.options.Clear();
-                        int ind = 0;
-                        List<string> list = new List<string> { "Fire", "Home", "Hammer", "Circle", "Rune" };
-                        foreach (string option in list)
-                        {
-                            iconSelected.options.Add(new Dropdown.OptionData(option, Minimap.instance.m_icons[ind].m_icon));
-                            ind++;
-                        }
-                        if (iconSelected != null)
-                            ValheimPlusPlugin.logger.LogInfo("Dropdown loaded properly");
-                        sharePin = pinEditorPanel.GetComponentInChildren<Toggle>();
-                        if (sharePin != null)
-                            ValheimPlusPlugin.logger.LogInfo("Share pin loaded properly");
-                        if (!Configuration.Current.Map.shareablePins || Configuration.Current.Map.shareAllPins)
-                            sharePin.gameObject.SetActive(false);
-                    }
-                    if (!pinEditorPanel.activeSelf)
+                    var nameInputFieldField = typeof(Minimap).GetField("m_nameInput", BindingFlags.NonPublic | BindingFlags.Instance);
+                    InputField inputField = nameInputFieldField?.GetValue(__instance) as InputField;
+
+                    if (inputField == null)
                     {
-                        pinEditorPanel.SetActive(true);
+                        ValheimPlusPlugin.Logger.LogInfo("m_nameInput is null");
+                        return true;
                     }
-                    if (!pinName.isFocused)
+
+                    if (!__instance.gameObject.activeInHierarchy)
                     {
-                        EventSystem.current.SetSelectedGameObject(pinName.gameObject);
+                        ValheimPlusPlugin.Logger.LogInfo("Minimap gameObject is not active in hierarchy");
+                        return true;
                     }
+
+                    inputField.gameObject.SetActive(true);
+                    inputField.ActivateInputField();
+                    EventSystem.current.SetSelectedGameObject(inputField.gameObject);
+
+                    // Set the input field as the selected game object
+                    if (!inputField.isFocused)
+                    {
+                        EventSystem.current.SetSelectedGameObject(inputField.gameObject);
+                    }
+
+                    // Store the pin position
                     pinPos = __instance.ScreenToWorldPoint(Input.mousePosition);
                     __instance.m_wasFocused = true;
-                    //iconPanel.transform.localPosition = pinPos;
-                    return false;
-                }
-                return true;
-            }
-        }
-        */
 
-        /*
+                    return false; // Skip the original method
+                }
+                return true; // Run the original method if the map is not enabled
+            }
+        }*/
+
         [HarmonyPatch(typeof(Minimap), "UpdateNameInput")]
         public static class MapPinEditor_Patches_UpdateNameInput
         {
@@ -259,9 +222,9 @@ namespace ValheimPlus.GameClasses
                 }
                 return true;
             }
-        }*/
+        }
 
-        /*
+        
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.InTextInput))]
         public static class MapPinEditor_InTextInput_Patch
         {
@@ -274,10 +237,9 @@ namespace ValheimPlus.GameClasses
                 }
                 return true;
             }
-        }*/
-
-        /*
-        [HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
+        }
+        
+        /*[HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
         public static class MapPinEditor_Update_Patch
         {
             private static void Postfix(ref Minimap __instance)
@@ -288,17 +250,26 @@ namespace ValheimPlus.GameClasses
                     {
                         if (Input.GetKeyDown(KeyCode.Escape))
                         {
-                            Minimap.instance.m_wasFocused = false; 
-                            pinEditorPanel.SetActive(false);
-                        } else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                            Minimap.instance.m_wasFocused = false;                             
+                        } 
+                        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                         {
-                            MapPinEditor_Patches_Awake.AddPin(ref __instance);
+                            AddPin(ref __instance);
                         }
                     }
                 }
             }
         }
-        */
+
+        public static void AddPin(ref Minimap __instance)
+        {
+            Minimap.PinType pintype = __instance.m_selectedType;
+            Minimap.PinData addedPin = __instance.AddPin(pinPos, pintype, __instance.m_nameInput.text, true, false);
+            if (!Configuration.Current.Map.shareAllPins)
+                VPlusMapPinSync.SendMapPinToServer(addedPin);
+            __instance.m_nameInput.gameObject.SetActive(false);
+            __instance.m_wasFocused = false;
+        }*/
     }
 
     /// <summary>
