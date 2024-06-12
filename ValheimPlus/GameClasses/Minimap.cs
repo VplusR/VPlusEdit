@@ -85,6 +85,7 @@ namespace ValheimPlus.GameClasses
         }
     }
 
+    // Triggers sending map pins to players when a pin is created
     public static class MapPinEditor_Patches
     {       
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
@@ -115,100 +116,7 @@ namespace ValheimPlus.GameClasses
                     }
                 }
             }            
-        }   
-
-        /// <summary>
-        /// Below is the code for the retired Vplus pin share system, i (nx) plan on working with this a little more when i get to it and have a plan on how i would like to change this.
-        /// This will require some more days/weeks until i get to it, sorry.
-        /// </summary>
-
-        /*[HarmonyPatch(typeof(Minimap), "Awake")]
-        public static class MapPinEditor_Patches_Awake
-        {
-            private static void Postfix(ref Minimap __instance)
-            {
-                // Ensure the InputField is properly initialized
-                if (__instance.m_nameInput == null)
-                {
-                    GameObject inputFieldObj = new GameObject("PinNameInputField");
-                    inputFieldObj.transform.SetParent(__instance.transform);
-
-                    InputField inputField = inputFieldObj.AddComponent<InputField>();
-                    RectTransform rectTransform = inputFieldObj.GetComponent<RectTransform>();
-                    rectTransform.sizeDelta = new Vector2(200, 30);
-                    rectTransform.anchoredPosition = Vector2.zero;
-
-                    // Create separate Text components for text and placeholder
-                    Text textComponent = inputFieldObj.AddComponent<Text>();
-                    Text placeholderComponent = new GameObject("Placeholder").AddComponent<Text>();
-                    placeholderComponent.transform.SetParent(inputFieldObj.transform);
-
-                    // Assign the fonts and colors
-                    textComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    textComponent.color = Color.black;
-                    placeholderComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    placeholderComponent.color = Color.gray;
-
-                    // Assign placeholder text
-                    placeholderComponent.text = "Enter Pin Name";
-
-                    // Configure the InputField
-                    inputField.textComponent = textComponent;
-                    inputField.placeholder = placeholderComponent;
-
-                    __instance.m_nameInput = Minimap.m_instance.m_nameInput;
-                }
-            }
-        }*/
-
-        /*[HarmonyPatch(typeof(Minimap), "OnMapDblClick")]
-        public static class MapPinEditor_Patches_OnMapDblClick
-        {
-            private static bool Prefix(ref Minimap __instance)
-            {
-                if (Configuration.Current.Map.IsEnabled)
-                {
-                    // Ensure shareablePins are set
-                    Minimap_AddPin_Patch.shareablePins = new List<Minimap.PinType>()
-                    {
-                        Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2,
-                        Minimap.PinType.Icon3, Minimap.PinType.Icon4
-                    };
-
-                    var nameInputFieldField = typeof(Minimap).GetField("m_nameInput", BindingFlags.NonPublic | BindingFlags.Instance);
-                    InputField inputField = nameInputFieldField?.GetValue(__instance) as InputField;
-
-                    if (inputField == null)
-                    {
-                        ValheimPlusPlugin.Logger.LogInfo("m_nameInput is null");
-                        return true;
-                    }
-
-                    if (!__instance.gameObject.activeInHierarchy)
-                    {
-                        ValheimPlusPlugin.Logger.LogInfo("Minimap gameObject is not active in hierarchy");
-                        return true;
-                    }
-
-                    inputField.gameObject.SetActive(true);
-                    inputField.ActivateInputField();
-                    EventSystem.current.SetSelectedGameObject(inputField.gameObject);
-
-                    // Set the input field as the selected game object
-                    if (!inputField.isFocused)
-                    {
-                        EventSystem.current.SetSelectedGameObject(inputField.gameObject);
-                    }
-
-                    // Store the pin position
-                    pinPos = __instance.ScreenToWorldPoint(Input.mousePosition);
-                    __instance.m_wasFocused = true;
-
-                    return false; // Skip the original method
-                }
-                return true; // Run the original method if the map is not enabled
-            }
-        }*/
+        } 
 
         [HarmonyPatch(typeof(Minimap), "UpdateNameInput")]
         public static class MapPinEditor_Patches_UpdateNameInput
@@ -237,39 +145,7 @@ namespace ValheimPlus.GameClasses
                 }
                 return true;
             }
-        }
-        
-        /*[HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
-        public static class MapPinEditor_Update_Patch
-        {
-            private static void Postfix(ref Minimap __instance)
-            {
-                if (Configuration.Current.Map.IsEnabled)
-                {
-                    if (Minimap.InTextInput())
-                    {
-                        if (Input.GetKeyDown(KeyCode.Escape))
-                        {
-                            Minimap.instance.m_wasFocused = false;                             
-                        } 
-                        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-                        {
-                            AddPin(ref __instance);
-                        }
-                    }
-                }
-            }
-        }
-
-        public static void AddPin(ref Minimap __instance)
-        {
-            Minimap.PinType pintype = __instance.m_selectedType;
-            Minimap.PinData addedPin = __instance.AddPin(pinPos, pintype, __instance.m_nameInput.text, true, false);
-            if (!Configuration.Current.Map.shareAllPins)
-                VPlusMapPinSync.SendMapPinToServer(addedPin);
-            __instance.m_nameInput.gameObject.SetActive(false);
-            __instance.m_wasFocused = false;
-        }*/
+        }   
     }
 
     /// <summary>

@@ -29,7 +29,7 @@ namespace ValheimPlus.GameClasses
     public static class Game_Start_Patch
     {
         public static string PinDataFilePath = "mapPins.csv";
-        public static List<ZPackage> storedMapPins = new List<ZPackage>();        
+        public static List<MapPinData> storedMapPins = new List<MapPinData>();        
 
         [UsedImplicitly]
         private static void Prefix()
@@ -91,14 +91,7 @@ namespace ValheimPlus.GameClasses
                                         PinType = pinType,
                                         PinName = pinName,
                                         KeepQuiet = keepQuiet
-                                    };
-
-                                    ValheimPlusPlugin.Logger.LogInfo($"pinSender: {senderID}");
-                                    ValheimPlusPlugin.Logger.LogInfo($"senderName: {senderName}");
-                                    ValheimPlusPlugin.Logger.LogInfo($"PosX: {positionX}, PosY {positionY}, PosZ {positionZ}");
-                                    ValheimPlusPlugin.Logger.LogInfo($"Type: {pinType}");
-                                    ValheimPlusPlugin.Logger.LogInfo($"PinName: {pinName}");
-                                    ValheimPlusPlugin.Logger.LogInfo($"Shout: {keepQuiet}");
+                                    };                                    
 
                                     pinDataList.Add(pinData);
                                 }
@@ -116,28 +109,12 @@ namespace ValheimPlus.GameClasses
                     // Populate storedMapPins with the loaded data
                     foreach (var mappinData in pinDataList)
                     {
-                        ZPackage pkg = new ZPackage();
-                        pkg.Write(mappinData.SenderID);
-                        pkg.Write(mappinData.SenderName);
-                        pkg.Write(mappinData.Position);
-                        pkg.Write(mappinData.PinType);
-                        pkg.Write(mappinData.PinName);
-                        pkg.Write(mappinData.KeepQuiet);
-
-                        ValheimPlusPlugin.Logger.LogInfo($"pinSender: {pkg.ReadLong()}");
-                        ValheimPlusPlugin.Logger.LogInfo($"senderName: {pkg.ReadString()}");
-                        ValheimPlusPlugin.Logger.LogInfo($"Position: {pkg.ReadVector3()}");
-                        ValheimPlusPlugin.Logger.LogInfo($"Type: {pkg.ReadInt()}");
-                        ValheimPlusPlugin.Logger.LogInfo($"PinName: {pkg.ReadString()}");
-                        ValheimPlusPlugin.Logger.LogInfo($"Shout: {pkg.ReadBool()}");
-
-                        storedMapPins.Add(pkg);
+                        storedMapPins.Add(mappinData);
                     }
 
                     int numberOfPackages = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
 
-                    ValheimPlusPlugin.Logger.LogInfo("Loaded map pins from file.");
-                    ValheimPlusPlugin.Logger.LogInfo($"storedMapPins has {numberOfPackages} in it.");
+                    ValheimPlusPlugin.Logger.LogInfo("Loaded map pins from file.");                    
                 }
                 catch (Exception ex)
                 {
@@ -148,108 +125,38 @@ namespace ValheimPlus.GameClasses
         }
     }
 
-    /*[HarmonyPatch(typeof(Game), nameof(Game.UpdateSaving))]
-    public static class PinSave_patch
-    {
-        private static void Postfix(Game __instance)
-        {            
-            if ((bool)ZNet.instance)
-            {
-                ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins.");
-
-                List<MapPinData> pinList = new List<MapPinData>();
-                List<ZPackage> zPackages = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
-
-                if (ZRoutedRpc.instance.GetServerPeerID() == ZRoutedRpc.instance.m_id && Configuration.Current.Map.shareAllPins)
-                {
-                    foreach (var zPackage in zPackages)
-                    {
-                        int pinCount = zPackage.ReadInt();
-                        for (int i = 0; i < pinCount; i++)
-                        {
-                            long senderID = zPackage.ReadLong();
-                            string senderName = zPackage.ReadString();
-                            float posX = zPackage.ReadSingle();
-                            float posY = zPackage.ReadSingle();
-                            float posZ = zPackage.ReadSingle();
-                            int pinType = zPackage.ReadInt();
-                            string pinName = zPackage.ReadString();
-                            bool keepQuiet = zPackage.ReadBool();
-
-                            MapPinData pinData = new MapPinData
-                            {
-                                SenderID = senderID,
-                                SenderName = senderName,
-                                Position = new Vector3(posX, posY, posZ),
-                                PinType = pinType,
-                                PinName = pinName,
-                                KeepQuiet = keepQuiet
-                            };
-
-                            pinList.Add(pinData);
-                        }
-                    }
-
-                    try
-                    {
-                        using (StreamWriter writer = new StreamWriter(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, false, Encoding.UTF8))
-                        {
-                            foreach (var pin in pinList)
-                            {
-                                string newLine = $"{pin.SenderID},{pin.SenderName},{pin.Position.x},{pin.Position.y},{pin.Position.z},{pin.PinType},{pin.PinName},{pin.KeepQuiet}";
-                                writer.WriteLine(newLine);
-                            }
-
-                            ValheimPlusPlugin.Logger.LogInfo("Saving Completed.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Handle exceptions (e.g., logging)
-                        ValheimPlusPlugin.Logger.LogInfo("An error occurred while saving pins: " + ex.Message);
-                    }
-                }
-            }
-        }
-    }*/
-
-    // Saves Map Pin Data to disk
+    // Saves Map Pin Data to disk when server shutdown
     [HarmonyPatch(typeof(Game), nameof(Game.OnApplicationQuit))]
     public static class MapPinSave_patch
     {
         private static void Prefix(Game __instance)
         {
             List<MapPinData> pinList = new List<MapPinData>();
-            List<ZPackage> zPackages = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
+            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
 
             ValheimPlusPlugin.Logger.LogInfo("Game Quitting. Saving Pins.");
 
             if (ZRoutedRpc.instance.GetServerPeerID() == ZRoutedRpc.instance.m_id && Configuration.Current.Map.shareAllPins)
             {
-
                 try
                 {
                     using (FileStream fileStream = new FileStream(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, FileMode.Create, FileAccess.Write))
                     {
                         using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
-                            foreach (var zPackage in zPackages)
+                            foreach (var mapPinData in mapPinDataList)
                             {
-                                // Reset the read position to the start of the ZPackage
-                                zPackage.SetPos(0);
-
-                                long senderID = zPackage.ReadLong();
-                                string senderName = zPackage.ReadString();
-                                Vector3 pos = zPackage.ReadVector3();
-                                int pinType = zPackage.ReadInt();
-                                string pinName = zPackage.ReadString();
-                                bool keepQuiet = zPackage.ReadBool();
+                                long senderID = mapPinData.SenderID;
+                                string senderName = mapPinData.SenderName;
+                                Vector3 pos = mapPinData.Position;
+                                int pinType = mapPinData.PinType;
+                                string pinName = mapPinData.PinName;
+                                bool keepQuiet = mapPinData.KeepQuiet;
 
                                 float posX = pos.x;
                                 float posY = pos.y;
                                 float posZ = pos.z;
-
-                                // Construct the line with the delimiter
+                                
                                 string line = $"{senderID},{senderName},{posX},{posY},{posZ},{pinType},{pinName},{keepQuiet}";
                                 ValheimPlusPlugin.Logger.LogInfo($"String Line: {line}");
 
@@ -266,7 +173,7 @@ namespace ValheimPlus.GameClasses
                     ValheimPlusPlugin.Logger.LogError("An error occurred while saving pins: " + ex.Message);
                 }
             }
-        }        
+        }
     }
 
     /// <summary>

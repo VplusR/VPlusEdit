@@ -2,9 +2,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using UnityEngine;
 using ValheimPlus.Configurations;
 using ValheimPlus.RPC;
@@ -76,101 +78,84 @@ namespace ValheimPlus.GameClasses
         }
     }
 
-    [HarmonyPatch(typeof(ZNet), "Start")]
-    public static class ZNet_Start_Patch
+    [HarmonyPatch(typeof(ZNet), "RPC_CharacterID")]
+    public static class ZNet_ID_Patch
     {
-        public static void Postfix(ZNet __instance)
+        // Triggers sending of map pins to players as they connect
+        public static void Postfix(ZRpc rpc, ZDOID characterID)
         {
-            if (ZNet.m_isServer)
+            ZNetPeer peer = ZNet.instance.GetPeer(rpc);
+            if (peer != null)
             {
-                __instance.StartCoroutine(MapPinSync.CheckConnectedPlayers());
-            }
-        }
-    }
-
-    public static class MapPinSync
-    {
-        private static HashSet<long> playersWithPinsSent = new HashSet<long>();
-
-        public static IEnumerator CheckConnectedPlayers()
-        {
-            if (ZNet.instance.GetPeers().Count == 0 || ZNet.instance.GetPeers() == null)
-            {
-                ValheimPlusPlugin.Logger.LogInfo("Peer Count is 0 or null");
-            }
-
-            while (true)
-            {
-                ValheimPlusPlugin.Logger.LogInfo("Waiting 2 secs to check connected peers.");
-
-                yield return new WaitForSeconds(2); // Adjust the delay as needed
-
-                try
+                peer.m_characterID = characterID;
+                string playerName = peer.m_playerName;
+                ZDOID zDOID = characterID;
+                ZLog.Log("Got character ZDOID from " + playerName + " : " + zDOID.ToString());
+                
+                if (ZNet.m_isServer)
                 {
-                    var peers = ZNet.instance.GetPeers();
-                    if (peers != null)
-                    {
-                        foreach (var peer in peers)
-                        {
-                            long playerId = peer.m_uid;
-
-                            // Skip players with ID 0 (assuming 0 indicates uninitialized player ID)
-                            if (playerId == 0)
-                            {
-                                continue;
-                            }
-
-                            if (!playersWithPinsSent.Contains(playerId))
-                            {
-                                SendPinsToPlayer(playerId);
-                                playersWithPinsSent.Add(playerId);
-                            }
-                        }
-                    }
-
-                }
-                catch (Exception e)
-                {
-                    ValheimPlusPlugin.Logger.LogError($"Thrown Exception");
+                    // Send stored map pins to the player
+                    SendPinsToPlayer(peer.m_uid);
                 }
             }
-        }
-
+        }    
+        
+        // Sends stored pins from memory to players when they connect    
         private static void SendPinsToPlayer(long playerId)
         {
             ValheimPlusPlugin.Logger.LogInfo("Sending stored map pins to player ID: " + playerId);
 
-            int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
-            ValheimPlusPlugin.Logger.LogInfo($"Count is {count}.");
-
-            foreach (var pinDataPackage in ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins)
+            foreach (var mapPinData in ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins)
             {
                 ZPackage packageToSend = new ZPackage();
-                packageToSend.Write(pinDataPackage);
+                packageToSend.Write(mapPinData.SenderID);
+                packageToSend.Write(mapPinData.SenderName);
+                packageToSend.Write(mapPinData.Position);
+                packageToSend.Write(mapPinData.PinType);
+                packageToSend.Write(mapPinData.PinName);
+                packageToSend.Write(mapPinData.KeepQuiet);
 
                 ZRoutedRpc.instance.InvokeRoutedRPC(playerId, "VPlusMapAddPin", new object[] { packageToSend });
             }
         }
-
-        public static void PlayerDisconnected(long playerId)
-        {
-            playersWithPinsSent.Remove(playerId);
-            ValheimPlusPlugin.Logger.LogInfo("Player disconnected, removed ID from set: " + playerId);
-        }
     }
 
-    /*[HarmonyPatch(typeof(ZNet), "Disconnect")]
-    public static class ZNet_Disconnect_Patch
+    // Periodically saves map pins to disk
+    [HarmonyPatch(typeof(ZNet), "SaveWorld")]
+    public static class PinSave_patch
     {
-        public static void Prefix(ZNet __instance, ZNetPeer peer)
+        private static void Postfix(Game __instance)
         {
-            if (ZNet.m_isServer && peer.m_uid != null)
+            if (ZNet.instance.IsServer() && !ZNet.instance.IsLocalInstance())
             {
-                var playerId = peer.m_uid;
-                MapPinSync.PlayerDisconnected(playerId);
+                ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins.");
+
+                List<MapPinData> mapData = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
+
+                if (Configuration.Current.Map.shareAllPins)
+                {
+                    try
+                    {
+                        using (StreamWriter writer = new StreamWriter(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, false, Encoding.UTF8))
+                        {
+                            foreach (var pin in mapData)
+                            {
+                                string newLine = $"{pin.SenderID},{pin.SenderName},{pin.Position.x},{pin.Position.y},{pin.Position.z},{pin.PinType},{pin.PinName},{pin.KeepQuiet}";
+                                writer.WriteLine(newLine);
+                            }
+
+                            ValheimPlusPlugin.Logger.LogInfo("Saving Completed.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle exceptions (e.g., logging)
+                        ValheimPlusPlugin.Logger.LogError("An error occurred while saving pins: " + ex.Message);
+                    }
+                }
             }
         }
-    }*/
+    }
 
     /// <summary>
     /// Load settngs from server instance
