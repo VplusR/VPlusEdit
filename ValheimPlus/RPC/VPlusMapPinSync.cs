@@ -91,7 +91,7 @@ namespace ValheimPlus.RPC
                         ZRoutedRpc.instance.InvokeRoutedRPC(peer.m_uid, "VPlusMapAddPin", new object[] { mapPinPkg });
                 }
 
-                ValheimPlusPlugin.Logger.LogInfo("Sent map pin to all clients.");                
+                // ValheimPlusPlugin.Logger.LogInfo("Sent map pin to all clients.");  // This also triggers on every pin sent even when players log in              
 
             }
             else // Client

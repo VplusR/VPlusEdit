@@ -101,51 +101,20 @@ namespace ValheimPlus.GameClasses
                         Minimap.PinType type = __result.m_type;
                         string name = __result.m_name;
 
-                        ValheimPlusPlugin.Logger.LogInfo($"Pin Text: {name} or {__result.m_name}");
+                        // ValheimPlusPlugin.Logger.LogInfo($"Pin Text: {name} or {__result.m_name}");      // This triggers even when clients connect to the server and server sends stored pins
 
                         if (__instance.m_mode != Minimap.MapMode.Large)
-                        {
-                            ValheimPlusPlugin.Logger.LogInfo("Sent to server with bool");
+                        {                            
                             VPlusMapPinSync.SendMapPinToServer(pos, type, name, true);                                
                         }
                         else
-                        {
-                            ValheimPlusPlugin.Logger.LogInfo("Sent to server without bool");
+                        {                            
                             VPlusMapPinSync.SendMapPinToServer(pos, type, name);                                
                         }                        
                     }
                 }
             }            
-        } 
-
-        [HarmonyPatch(typeof(Minimap), "UpdateNameInput")]
-        public static class MapPinEditor_Patches_UpdateNameInput
-        {
-            private static bool Prefix(ref Minimap __instance)
-            {
-                if (Configuration.Current.Map.IsEnabled)
-                {
-                    // Break out of this unnecessary thing
-                    return false;
-                }
-                return true;
-            }
-        }
-
-        
-        [HarmonyPatch(typeof(Minimap), nameof(Minimap.InTextInput))]
-        public static class MapPinEditor_InTextInput_Patch
-        {
-            private static bool Prefix(ref bool __result)
-            {
-                if (Configuration.Current.Map.IsEnabled)
-                {
-                    __result = Minimap.m_instance.m_mode == Minimap.MapMode.Large && Minimap.m_instance.m_wasFocused;
-                    return false;
-                }
-                return true;
-            }
-        }   
+        }         
     }
 
     /// <summary>

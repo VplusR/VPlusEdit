@@ -28,7 +28,9 @@ namespace ValheimPlus.GameClasses
     [HarmonyPatch(typeof(Game), nameof(Game.Start))]
     public static class Game_Start_Patch
     {
-        public static string PinDataFilePath = "mapPins.csv";
+        public static string PinDataFilePath = ValheimPlusPlugin.VPlusDataDirectoryPath +
+                                                      Path.DirectorySeparatorChar +
+                                                      ZNet.instance.GetWorldName() + "_mapPins.dat";
         public static List<MapPinData> storedMapPins = new List<MapPinData>();        
 
         [UsedImplicitly]
@@ -132,9 +134,7 @@ namespace ValheimPlus.GameClasses
         private static void Prefix(Game __instance)
         {
             List<MapPinData> pinList = new List<MapPinData>();
-            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
-
-            ValheimPlusPlugin.Logger.LogInfo("Game Quitting. Saving Pins.");
+            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;            
 
             if (ZRoutedRpc.instance.GetServerPeerID() == ZRoutedRpc.instance.m_id && Configuration.Current.Map.shareAllPins)
             {
@@ -165,7 +165,7 @@ namespace ValheimPlus.GameClasses
                             }
                         }
                     }
-                    ValheimPlusPlugin.Logger.LogInfo("Map pins saved successfully.");
+                    ValheimPlusPlugin.Logger.LogInfo("Map pins saved to disk successfully.");
                 }
                 catch (Exception ex)
                 {

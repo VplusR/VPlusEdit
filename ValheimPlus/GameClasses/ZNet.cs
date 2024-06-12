@@ -127,9 +127,7 @@ namespace ValheimPlus.GameClasses
         private static void Postfix(Game __instance)
         {
             if (ZNet.instance.IsServer() && !ZNet.instance.IsLocalInstance())
-            {
-                ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins.");
-
+            {       
                 List<MapPinData> mapData = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
 
                 if (Configuration.Current.Map.shareAllPins)
@@ -144,7 +142,7 @@ namespace ValheimPlus.GameClasses
                                 writer.WriteLine(newLine);
                             }
 
-                            ValheimPlusPlugin.Logger.LogInfo("Saving Completed.");
+                            ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins Completed.");
                         }
                     }
                     catch (Exception ex)
