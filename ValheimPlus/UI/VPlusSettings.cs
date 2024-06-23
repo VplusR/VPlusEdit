@@ -226,7 +226,7 @@ namespace ValheimPlus.UI
                 okButton.onClick.AddListener(delegate {
                     Apply();
                     modSettingsPanel.SetActive(false);
-                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().name);
                 });
                 applyButton.gameObject.SetActive(false);
             }
@@ -238,7 +238,7 @@ namespace ValheimPlus.UI
             foreach (var prop in typeof(Configuration).GetProperties().OrderBy(prop => prop.Name))
             {
                 string keyName = prop.Name;
-                if (keyName == "Current" || keyName == "Settings" || keyName == "Time" || keyName == "Deconstruct")
+                if (keyName == "Current" || keyName == "Settings" || keyName == "Deconstruct")
                     continue;
                 else
                 {
