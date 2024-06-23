@@ -1,5 +1,6 @@
 ﻿using GUIFramework;
 using HarmonyLib;
+using System.Reflection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ using ValheimPlus.Utility;
 using static Minimap;
 using static System.Net.Mime.MediaTypeNames;
 using Random = UnityEngine.Random;
+using BepInEx;
 
 // ToDo add packet system to convey map markers
 namespace ValheimPlus.GameClasses
@@ -87,34 +89,51 @@ namespace ValheimPlus.GameClasses
 
     // Triggers sending map pins to players when a pin is created
     public static class MapPinEditor_Patches
-    {       
-        [HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
-        public static class Minimap_AddPin_Patch
+    {
+        // Gets name of the pin
+        [HarmonyPatch(typeof(Minimap), "OnPinTextEntered")]
+        public static class Minimap_PinNameData_CreateMapNamePin_Patch
         {
-            private static void Postfix(ref Minimap __instance, ref Minimap.PinData __result)
-            {     
-                if (Configuration.Current.Map.IsEnabled && Configuration.Current.Map.shareAllPins)
+            private static void Prefix(string t, ref Minimap __instance)
+            {
+                if (__instance.m_nameInput == null) return;
+
+                string pinName = __instance.m_nameInput.text;
+
+                if (pinName == null) return;                
+
+                // original handling of the method
+                pinName = pinName.Replace('$', ' ').Replace('<', ' ').Replace('>', ' ');
+
+                if (string.IsNullOrEmpty(pinName)) return;                
+
+                var namePin = __instance.m_namePin; // Accessing m_namePin
+
+                if (namePin == null) return;                
+
+                if (!Configuration.Current.Map.IsEnabled || !Configuration.Current.Map.shareAllPins) return;               
+
+                if (new List<Minimap.PinType> { Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4 }.Contains(namePin.m_type))
                 {
-                    if (new List<Minimap.PinType> { Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4 }.Contains(__result.m_type))
+                    Vector3 pos = namePin.m_pos; // Assuming m_pos is a field in namePin
+                    Minimap.PinType type = namePin.m_type; // Assuming m_type is a field in namePin
+
+                    // ValheimPlusPlugin.Logger.LogInfo($"Pin Text: {pinName}"); // This triggers even when clients connect to the server and server sends stored pins
+
+                    if (!string.IsNullOrEmpty(pinName))
                     {
-                        Vector3 pos = __result.m_pos;
-                        Minimap.PinType type = __result.m_type;
-                        string name = __result.m_name;
-
-                        // ValheimPlusPlugin.Logger.LogInfo($"Pin Text: {name} or {__result.m_name}");      // This triggers even when clients connect to the server and server sends stored pins
-
                         if (__instance.m_mode != Minimap.MapMode.Large)
-                        {                            
-                            VPlusMapPinSync.SendMapPinToServer(pos, type, name, true);                                
+                        {
+                            VPlusMapPinSync.SendMapPinToServer(pos, type, pinName, true);
                         }
                         else
-                        {                            
-                            VPlusMapPinSync.SendMapPinToServer(pos, type, name);                                
-                        }                        
+                        {
+                            VPlusMapPinSync.SendMapPinToServer(pos, type, pinName);
+                        }
                     }
                 }
-            }            
-        }         
+            }
+        }
     }
 
     /// <summary>
