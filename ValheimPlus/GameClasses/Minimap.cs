@@ -100,18 +100,18 @@ namespace ValheimPlus.GameClasses
 
                 string pinName = __instance.m_nameInput.text;
 
-                if (pinName == null) return;                
+                if (pinName == null) return;
 
                 // original handling of the method
                 pinName = pinName.Replace('$', ' ').Replace('<', ' ').Replace('>', ' ');
 
-                if (string.IsNullOrEmpty(pinName)) return;                
+                if (string.IsNullOrEmpty(pinName)) return;
 
                 var namePin = __instance.m_namePin; // Accessing m_namePin
 
-                if (namePin == null) return;                
+                if (namePin == null) return;
 
-                if (!Configuration.Current.Map.IsEnabled || !Configuration.Current.Map.shareAllPins) return;               
+                if (!Configuration.Current.Map.IsEnabled || !Configuration.Current.Map.shareAllPins) return;
 
                 if (new List<Minimap.PinType> { Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4 }.Contains(namePin.m_type))
                 {
