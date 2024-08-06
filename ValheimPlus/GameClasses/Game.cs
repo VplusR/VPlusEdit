@@ -38,7 +38,7 @@ namespace ValheimPlus.GameClasses
         {
             ZRoutedRpc.instance.Register<ZPackage>("VPlusConfigSync", VPlusConfigSync.RPC_VPlusConfigSync);
             ZRoutedRpc.instance.Register<ZPackage>("VPlusMapSync", VPlusMapSync.RPC_VPlusMapSync);
-            ZRoutedRpc.instance.Register<ZPackage>("VPlusMapAddPin", VPlusMapPinSync.RPC_VPlusMapAddPin);            
+            ZRoutedRpc.instance.Register<ZPackage>("VPlusMapAddPin", VPlusMapPinSync.RPC_VPlusMapAddPin);
             ZRoutedRpc.instance.Register("VPlusAck", VPlusAck.RPC_VPlusAck);
         }
 
@@ -49,7 +49,7 @@ namespace ValheimPlus.GameClasses
 
         public static List<MapPinData> LoadPinsFromFile()
         {
-            List<MapPinData> pinDataList = new List<MapPinData>();            
+            List<MapPinData> pinDataList = new List<MapPinData>();
 
             if (ZNet.instance.IsServer())
             {
@@ -93,14 +93,14 @@ namespace ValheimPlus.GameClasses
                                         PinType = pinType,
                                         PinName = pinName,
                                         KeepQuiet = keepQuiet
-                                    };                                    
+                                    };
 
                                     pinDataList.Add(pinData);
                                 }
                                 catch (Exception ex)
                                 {
                                     ValheimPlusPlugin.Logger.LogError($"Failed to parse map pin data from line: {line}. Error: {ex.Message}");
-                                }                                
+                                }
                             }
                         }
                     }
@@ -116,7 +116,7 @@ namespace ValheimPlus.GameClasses
 
                     int numberOfPackages = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
 
-                    ValheimPlusPlugin.Logger.LogInfo("Loaded map pins from file.");                    
+                    ValheimPlusPlugin.Logger.LogInfo("Loaded map pins from file.");
                 }
                 catch (Exception ex)
                 {
@@ -134,7 +134,7 @@ namespace ValheimPlus.GameClasses
         private static void Prefix(Game __instance)
         {
             List<MapPinData> pinList = new List<MapPinData>();
-            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;            
+            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
 
             if (ZRoutedRpc.instance.GetServerPeerID() == ZRoutedRpc.instance.m_id && Configuration.Current.Map.shareAllPins)
             {
