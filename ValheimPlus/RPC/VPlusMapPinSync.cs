@@ -21,7 +21,7 @@ namespace ValheimPlus.RPC
         {            
             if (ZNet.m_isServer) // Server
             {
-                int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;                
+                int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
 
                 if (mapPinPkg == null)
                 {
@@ -30,7 +30,7 @@ namespace ValheimPlus.RPC
                 }                
                                   
                 // Should append to sharedMapPins
-                List<MapPinData> pinList = new List<MapPinData>();                
+                List<MapPinData> pinList = new List<MapPinData>();
 
                 while (mapPinPkg.GetPos() < mapPinPkg.Size())
                 {
@@ -91,7 +91,7 @@ namespace ValheimPlus.RPC
                         ZRoutedRpc.instance.InvokeRoutedRPC(peer.m_uid, "VPlusMapAddPin", new object[] { mapPinPkg });
                 }
 
-                // ValheimPlusPlugin.Logger.LogInfo("Sent map pin to all clients.");  // This also triggers on every pin sent even when players log in              
+                // ValheimPlusPlugin.Logger.LogInfo("Sent map pin to all clients.");  // This also triggers on every pin sent even when players log in
 
             }
             else // Client
@@ -102,7 +102,7 @@ namespace ValheimPlus.RPC
                 {
                     ValheimPlusPlugin.Logger.LogWarning("Warning: Got empty map pin package from server.");
                     return;
-                }                
+                }
 
                 try
                 {
@@ -162,7 +162,7 @@ namespace ValheimPlus.RPC
             pkg.Write(pos); // Pin position
             pkg.Write((int)type); // Pin type
             pkg.Write(name); // Pin name
-            pkg.Write(keepQuiet); // Don't shout           
+            pkg.Write(keepQuiet); // Don't shout
 
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "VPlusMapAddPin", new object[] { pkg });
         }
