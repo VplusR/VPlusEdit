@@ -27,8 +27,8 @@ namespace ValheimPlus.RPC
                 {
                     ValheimPlusPlugin.Logger.LogInfo("Map Package is null.");
                     return;
-                }                
-                                  
+                }
+
                 // Should append to sharedMapPins
                 List<MapPinData> pinList = new List<MapPinData>();
 
@@ -53,7 +53,6 @@ namespace ValheimPlus.RPC
 
                     // Generate unique ID for the pin based on coordinates
                     string uniqueID = pinData.GetUniqueID();
-                        
 
                     bool exists = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Any(existingPin =>
                     {
@@ -115,10 +114,9 @@ namespace ValheimPlus.RPC
                     int pinType = mapPinPkg.ReadInt();
                     string pinName = mapPinPkg.ReadString();
                     bool keepQuiet = mapPinPkg.ReadBool();
-                    
 
                     if (senderName != Player.m_localPlayer.GetPlayerName() && pinSender != ZRoutedRpc.instance.m_id)
-                    {      
+                    {
                         if (!Minimap.instance.HaveSimilarPin(pinPos, (Minimap.PinType)pinType, pinName, true))
                         {
                             Minimap.PinData addedPin = Minimap.instance.AddPin(pinPos, (Minimap.PinType)pinType, pinName, true, false);
@@ -140,7 +138,7 @@ namespace ValheimPlus.RPC
         }
 
         /// <summary>
-		/// Send the pin, attach client ID
+	/// Send the pin, attach client ID
         /// </summary>
         public static void SendMapPinToServer(Vector3 pos, Minimap.PinType type, string name, bool keepQuiet = false)
         {
@@ -153,7 +151,7 @@ namespace ValheimPlus.RPC
             {
                 pkg.Write(""); // when true, loads blank name to prevent shouting
             }
-            
+
             if (!keepQuiet)
             {
                 pkg.Write(Player.m_localPlayer.GetPlayerName()); // Sender Name
