@@ -98,9 +98,9 @@ namespace ValheimPlus.GameClasses
                     SendPinsToPlayer(peer.m_uid);
                 }
             }
-        }    
-        
-        // Sends stored pins from memory to players when they connect    
+        }
+
+        // Sends stored pins from memory to players when they connect
         private static void SendPinsToPlayer(long playerId)
         {
             ValheimPlusPlugin.Logger.LogInfo("Sending stored map pins to player ID: " + playerId);
@@ -236,5 +236,5 @@ namespace ValheimPlus.GameClasses
                 }
             }
         }
-    }    
+    }
 }
