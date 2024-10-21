@@ -1,174 +1,88 @@
 ﻿using HarmonyLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+using JetBrains.Annotations;
 using ValheimPlus.Configurations;
+using static Skills;
 
 namespace ValheimPlus.GameClasses
 {
-	[HarmonyPatch(typeof(Skills), "RaiseSkill")]
-	public static class AddExpGainedDisplay
-	{
-		/// <summary>
-		/// Updates experience modifiers
-		/// </summary>
-		private static void Prefix(ref Skills __instance, ref Skills.SkillType skillType, ref float factor)
-		{
-			if (Configuration.Current.Experience.IsEnabled)
-			{
-				switch ((SkillType)skillType)
-				{
-					case SkillType.Swords:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.swords);
-						break;
-					case SkillType.Knives:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.knives);
-						break;
-					case SkillType.Clubs:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.clubs);
-						break;
-					case SkillType.Polearms:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.polearms);
-						break;
-					case SkillType.Spears:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.spears);
-						break;
-					case SkillType.Blocking:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.blocking);
-						break;
-					case SkillType.Axes:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.axes);
-						break;
-					case SkillType.Bows:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.bows);
-						break;
-					case SkillType.ElementalMagic:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.elementalMagic);
-						break;
-					case SkillType.BloodMagic:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.bloodMagic);
-						break;
-					case SkillType.Unarmed:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.unarmed);
-						break;
-					case SkillType.Pickaxes:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.pickaxes);
-						break;
-					case SkillType.WoodCutting:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.woodCutting);
-						break;
-					case SkillType.Crossbows:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.crossbows);
-						break;
-					case SkillType.Jump:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.jump);
-						break;
-					case SkillType.Sneak:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.sneak);
-						break;
-					case SkillType.Run:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.run);
-						break;
-					case SkillType.Swim:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.swim);
-						break;
-					case SkillType.Fishing:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.fishing);
-						break;
-					case SkillType.Ride:
-						factor = Helper.applyModifierValue(factor, Configuration.Current.Experience.ride);
-						break;
-					default:
-						break;
-				}
-			}
-		}
+    [HarmonyPatch(typeof(Skills), nameof(Skills.RaiseSkill))]
+    public static class Skills_RaiseSkill_Patch
+    {
+        /// <summary>
+        /// Apply experience modifications.
+        /// </summary>
+        [UsedImplicitly]
+        private static void Prefix(ref SkillType skillType, ref float factor)
+        {
+            var config = Configuration.Current.Experience;
+            if (!config.IsEnabled) return;
 
-		/// <summary>
-		/// Experience gained notifications
-		/// </summary>
-		private static void Postfix(Skills __instance, Skills.SkillType skillType, float factor = 1f)
-		{
-			if (Configuration.Current.Hud.IsEnabled && Configuration.Current.Hud.experienceGainedNotifications && skillType != Skills.SkillType.None)
-			{
-				try
-                {
-					Skills.Skill skill;
-					skill = __instance.GetSkill(skillType);
-					float percent = skill.m_accumulator / (skill.GetNextLevelRequirement() / 100);
-					__instance.m_player.Message(MessageHud.MessageType.TopLeft, "Level " + Helper.tFloat(skill.m_level, 0) + " " + skill.m_info.m_skill
-						+ " [" + Helper.tFloat(skill.m_accumulator, 2) + "/" + Helper.tFloat(skill.GetNextLevelRequirement(), 2) + "]"
-						+ " (" + Helper.tFloat(percent, 0) + "%)", 0, skill.m_info.m_icon);
-				}
-				catch (Exception ex)
-				{
-					ValheimPlusPlugin.Logger.LogError(ex);
-					return;
-				}
-			}
-		}
-	}
+            var modifier = skillType switch
+            {
+                SkillType.Swords => config.swords,
+                SkillType.Knives => config.knives,
+                SkillType.Clubs => config.clubs,
+                SkillType.Polearms => config.polearms,
+                SkillType.Spears => config.spears,
+                SkillType.Blocking => config.blocking,
+                SkillType.Axes => config.axes,
+                SkillType.Bows => config.bows,
+                SkillType.ElementalMagic => config.elementalMagic,
+                SkillType.BloodMagic => config.bloodMagic,
+                SkillType.Unarmed => config.unarmed,
+                SkillType.Pickaxes => config.pickaxes,
+                SkillType.WoodCutting => config.woodCutting,
+                SkillType.Crossbows => config.crossbows,
+                SkillType.Jump => config.jump,
+                SkillType.Sneak => config.sneak,
+                SkillType.Run => config.run,
+                SkillType.Swim => config.swim,
+                SkillType.Fishing => config.fishing,
+                SkillType.Cooking => config.cooking,
+                SkillType.Farming => config.farming,
+                SkillType.Crafting => config.crafting,
+                SkillType.Ride => config.ride,
+                _ => 0f
+            };
 
-	public enum SkillType
-	{
-		None,
-		Swords,
-		Knives,
-		Clubs,
-		Polearms,
-		Spears,
-		Blocking,
-		Axes,
-		Bows,
-		ElementalMagic,
-		BloodMagic,
-		Unarmed,
-		Pickaxes,
-		WoodCutting,
-		Crossbows,
-		Jump = 100,
-		Sneak,
-		Run,
-		Swim,
-		Fishing,
-		Ride = 110,
-		All = 999
-	}
+            factor = Helper.applyModifierValue(factor, modifier);
+        }
 
-	[HarmonyPatch(typeof(Skills), nameof(Skills.OnDeath))]
-	public static class Skills_OnDeath_Transpiler
-	{
-		private static MethodInfo method_Skills_LowerAllSkills = AccessTools.Method(typeof(Skills), nameof(Skills.LowerAllSkills));
-		private static MethodInfo method_LowerAllSkills = AccessTools.Method(typeof(Skills_OnDeath_Transpiler), nameof(Skills_OnDeath_Transpiler.LowerAllSkills));
+        /// <summary>
+        /// Experience gained notifications
+        /// </summary>
+        [UsedImplicitly]
+        private static void Postfix(Skills __instance, SkillType skillType, float factor = 1f)
+        {
+            var config = Configuration.Current.Hud;
+            if (!config.IsEnabled || !config.experienceGainedNotifications || skillType == SkillType.None) return;
 
-		/// <summary>
-		/// We replace the call to Skills.LowerAllSkills with our own stub, which then applies the death multiplier.
-		/// </summary>
-		[HarmonyTranspiler]
-		public static IEnumerable<CodeInstruction> Transpile(IEnumerable<CodeInstruction> instructions)
-		{
-			if (!Configuration.Current.Player.IsEnabled) return instructions;
+            var skill = __instance.GetSkill(skillType);
+            float percent = skill.m_accumulator / (skill.GetNextLevelRequirement() / 100);
+            var text =
+                $"Level {skill.m_level.tFloat(0)} {skill.m_info.m_skill} " +
+                $"[{skill.m_accumulator.tFloat(2)}/{skill.GetNextLevelRequirement().tFloat(2)}] ({percent.tFloat(0)}%)";
+            __instance.m_player.Message(MessageHud.MessageType.TopLeft, text, 0, skill.m_info.m_icon);
+        }
+    }
 
-			List<CodeInstruction> il = instructions.ToList();
+    /// <summary>
+    /// Apply our death penalty multiplier.
+    /// </summary>
+    [HarmonyPatch(typeof(Skills), nameof(Skills.LowerAllSkills))]
+    public static class Skills_LowerAllSkills_Patch
+    {
+        [UsedImplicitly]
+        public static bool Prefix(ref float factor)
+        {
+            var config = Configuration.Current.Player;
+            if (!config.IsEnabled) return true;
 
-			for (int i = 0; i < il.Count; ++i)
-			{
-				if (il[i].Calls(method_Skills_LowerAllSkills))
-				{
-					il[i].operand = method_LowerAllSkills;
-				}
-			}
+            // Skip any reduction and also skip the message that skills were lowered.
+            if (config.deathPenaltyMultiplier <= -100f) return false;
 
-			return il.AsEnumerable();
-		}
-
-		public static void LowerAllSkills(Skills instance, float factor)
-		{
-			if (Configuration.Current.Player.deathPenaltyMultiplier > -100.0f)
-			{
-				instance.LowerAllSkills(Helper.applyModifierValue(factor, Configuration.Current.Player.deathPenaltyMultiplier));
-			}
-		}
-	}
+            factor = Helper.applyModifierValue(factor, config.deathPenaltyMultiplier);
+            return true;
+        }
+    }
 }

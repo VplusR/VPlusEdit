@@ -149,30 +149,21 @@ namespace ValheimPlus
         }
 
         /// <summary>
-        /// function to get the amount of a specific item in a list of <ItemDrop.ItemData>
+        /// function to get the amount of a specific item in a list of ItemDrop.ItemData
         /// </summary>
-        public static int GetItemAmountInItemList(List<ItemDrop.ItemData> itemList, ItemDrop.ItemData needle)
-        {
-            int amount = 0;
-            foreach (ItemDrop.ItemData item in itemList)
-            {
-                if (item.m_shared.m_name == needle.m_shared.m_name)
-                    amount += item.m_stack;
-            }
+        public static int GetItemAmountInItemList(List<ItemDrop.ItemData> itemList, ItemDrop.ItemData item,
+            int quality = -1, bool matchWorldLevel = true) => itemList
+            .Where(current => current.m_shared.m_name == item.m_shared.m_name &&
+                              (quality < 0 || quality == current.m_quality) &&
+                              (!matchWorldLevel || current.m_worldLevel >= Game.m_worldLevel))
+            .Sum(current => current.m_stack);
 
-            return amount;
-        }
-
-        public static int GetItemAmountInItemList(List<ItemDrop.ItemData> itemList, string needle)
-        {
-            int amount = 0;
-            foreach (ItemDrop.ItemData item in itemList)
-            {
-                if (item.m_shared.m_name == needle) amount += item.m_stack;
-            }
-
-            return amount;
-        }
+        public static int GetItemAmountInItemList(List<ItemDrop.ItemData> itemList, string name,
+            int quality = -1, bool matchWorldLevel = true) => itemList
+            .Where(current => current.m_shared.m_name == name &&
+                              (quality < 0 || quality == current.m_quality) &&
+                              (!matchWorldLevel || current.m_worldLevel >= Game.m_worldLevel))
+            .Sum(current => current.m_stack);
 
         // function to remove items in the amount from all nearby chests
         public static int RemoveItemInAmountFromAllNearbyChests(GameObject target, float range, ItemDrop.ItemData needle, int amount, bool checkWard = true)

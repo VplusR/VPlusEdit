@@ -21,6 +21,9 @@
 		public float run { get; internal set; } = 0;
 		public float swim { get; internal set; } = 0;
 		public float fishing { get; internal set; } = 0;
+		public float cooking { get; internal set; } = 0;
+		public float farming { get; internal set; } = 0;
+		public float crafting { get; internal set; } = 0;
 		public float ride { get; internal set; } = 0;
 
 	}

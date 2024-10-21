@@ -11,8 +11,6 @@ namespace ValheimPlus.GameClasses
     [HarmonyPatch(typeof(Recipe), nameof(Recipe.GetAmount))]
     public static class Recipe_GetAmount_Transpiler
     {
-        private static List<Container> nearbyChests;
-
         private static readonly MethodInfo Method_Player_GetFirstRequiredItem =
             AccessTools.Method(typeof(Player), nameof(Player.GetFirstRequiredItem));
 
@@ -44,26 +42,22 @@ namespace ValheimPlus.GameClasses
         }
 
         private static ItemDrop.ItemData GetFirstRequiredItem(Player player, Inventory inventory, Recipe recipe,
-            int qualityLevel, out int amount, out int extraAmount)
+            int qualityLevel, out int amount, out int extraAmount, int craftMultiplier)
         {
             // call the old method first
-            var result = player.GetFirstRequiredItem(inventory, recipe, qualityLevel, out amount, out extraAmount);
-            if (result != null)
-            {
-                // we found items on the player
-                return result;
-            }
+            var result = player.GetFirstRequiredItem(inventory, recipe, qualityLevel, out amount, out extraAmount,
+                craftMultiplier);
+            if (result != null) return result; // we found items on the player
 
-            var craftingStationGameObj = recipe.m_craftingStation.gameObject;
-            var stopwatch = GameObjectAssistant.GetStopwatch(craftingStationGameObj);
-            int lookupInterval = Helper.Clamp(Configuration.Current.CraftFromChest.lookupInterval, 1, 10) * 1000;
-            if (!stopwatch.IsRunning || stopwatch.ElapsedMilliseconds > lookupInterval)
-            {
-                nearbyChests = InventoryAssistant.GetNearbyChests(craftingStationGameObj,
-                    Helper.Clamp(Configuration.Current.CraftFromChest.range, 1, 50),
-                    !Configuration.Current.CraftFromChest.ignorePrivateAreaCheck);
-                stopwatch.Restart();
-            }
+            var gameObject = Configuration.Current.CraftFromChest.checkFromWorkbench
+                ? player.GetCurrentCraftingStation()?.gameObject ?? player.gameObject
+                : player.gameObject;
+            
+            // Don't cache this. Recipe.GetAmount isn't called at any fixed interval (currently).
+            var nearbyChests = InventoryAssistant.GetNearbyChests(
+                gameObject,
+                Helper.Clamp(Configuration.Current.CraftFromChest.range, 1, 50),
+                !Configuration.Current.CraftFromChest.ignorePrivateAreaCheck);
 
             // try to find them inside chests.
             var requirements = recipe.m_resources;
@@ -74,16 +68,16 @@ namespace ValheimPlus.GameClasses
                 {
                     if (!requirement.m_resItem) continue;
 
-                    int requiredAmount = requirement.GetAmount(qualityLevel);
+                    int requiredAmount = requirement.GetAmount(qualityLevel) * craftMultiplier;
                     var requirementSharedItemData = requirement.m_resItem.m_itemData.m_shared;
-                    for (int i = 0; i <= requirementSharedItemData.m_maxQuality; i++)
+                    for (int quality = 0; quality <= requirementSharedItemData.m_maxQuality; quality++)
                     {
                         var requirementName = requirementSharedItemData.m_name;
-                        if (chest.m_inventory.CountItems(requirementName, i) < requiredAmount) continue;
+                        if (chest.m_inventory.CountItems(requirementName, quality) < requiredAmount) continue;
 
                         amount = requiredAmount;
                         extraAmount = requirement.m_extraAmountOnlyOneIngredient;
-                        return chest.m_inventory.GetItem(requirementName, i);
+                        return chest.m_inventory.GetItem(requirementName, quality);
                     }
                 }
             }

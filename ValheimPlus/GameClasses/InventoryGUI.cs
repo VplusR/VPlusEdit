@@ -9,6 +9,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using ValheimPlus.Configurations;
+using ValheimPlus.Utility;
 
 namespace ValheimPlus.GameClasses
 {
@@ -138,13 +139,14 @@ namespace ValheimPlus.GameClasses
     }
 
 
+    // todo this is mostly an inline of the actual method it looks like, it could probably be more precise.
     /// <summary>
     /// Inventory HUD setup
     /// </summary>
     [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirement))]
     public static class InventoryGui_SetupRequirement_Patch
     {
-        private static bool Prefix(Transform elementRoot, Piece.Requirement req, Player player, bool craft, int quality, ref bool __result)
+        private static bool Prefix(Transform elementRoot, Piece.Requirement req, Player player, bool craft, int quality, int craftMultiplier, ref bool __result)
         {
             if (!Configuration.Current.Hud.IsEnabled && !Configuration.Current.CraftFromChest.IsEnabled || !Configuration.Current.Hud.showRequiredItems && !Configuration.Current.CraftFromChest.IsEnabled) return true;
 
@@ -163,7 +165,7 @@ namespace ValheimPlus.GameClasses
                 component4.m_text = Localization.instance.Localize(req.m_resItem.m_itemData.m_shared.m_name);
                 component2.text = Localization.instance.Localize(req.m_resItem.m_itemData.m_shared.m_name);
                 int num = player.GetInventory().CountItems(req.m_resItem.m_itemData.m_shared.m_name);
-                int amount = req.GetAmount(quality);
+                int amount = req.GetAmount(quality) * craftMultiplier;
 
                 if (amount <= 0)
                 {

@@ -2,34 +2,32 @@
 using System.Diagnostics;
 using UnityEngine;
 
-namespace ValheimPlus
+namespace ValheimPlus.Utility
 {
     static class GameObjectAssistant
     {
-        private static ConcurrentDictionary<float, Stopwatch> stopwatches = new ConcurrentDictionary<float, Stopwatch>();
+        // TODO memory leak
+        private static readonly ConcurrentDictionary<float, Stopwatch> Stopwatches = new();
 
         public static Stopwatch GetStopwatch(GameObject o)
         {
-            float hash = GetGameObjectPosHash(o);
-            Stopwatch stopwatch = null;
-
-            if (!stopwatches.TryGetValue(hash, out stopwatch))
-            {
-                stopwatch = new Stopwatch();
-                stopwatches.TryAdd(hash, stopwatch);
-            }
-
+            var hash = GetGameObjectPositionHash(o);
+            if (Stopwatches.TryGetValue(hash, out var stopwatch)) return stopwatch;
+            
+            stopwatch = new Stopwatch();
+            Stopwatches.TryAdd(hash, stopwatch);
             return stopwatch;
         }
 
-        private static float GetGameObjectPosHash(GameObject o)
+        public static float GetGameObjectPositionHash(GameObject obj)
         {
-            return (1000f * o.transform.position.x) + o.transform.position.y + (.001f * o.transform.position.z);
+            var position = obj.transform.position;
+            return 1000f * position.x + position.y + .001f * position.z;
         }
 
         public static T GetChildComponentByName<T>(string name, GameObject objected) where T : Component
         {
-            foreach (T component in objected.GetComponentsInChildren<T>(true))
+            foreach (var component in objected.GetComponentsInChildren<T>(true))
             {
                 if (component.gameObject.name == name)
                 {
