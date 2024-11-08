@@ -247,7 +247,6 @@ namespace ValheimPlus.GameClasses
         }
     }
 
-
     [HarmonyPatch(typeof(Player), nameof(Player.EatFood))]
     public static class Player_EatFood_Transpiler
     {
