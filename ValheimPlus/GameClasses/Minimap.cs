@@ -20,6 +20,7 @@ using static Minimap;
 using static System.Net.Mime.MediaTypeNames;
 using Random = UnityEngine.Random;
 using BepInEx;
+using static Mono.Security.X509.X520;
 
 // ToDo add packet system to convey map markers
 namespace ValheimPlus.GameClasses
@@ -131,6 +132,28 @@ namespace ValheimPlus.GameClasses
                             VPlusMapPinSync.SendMapPinToServer(pos, type, pinName);
                         }
                     }
+                }
+            }
+        }
+
+        // Handles deleting of pins by owner
+        [HarmonyPatch(typeof(Minimap), "OnMapRightClick")]
+        public static class miniMap_pinDelete_patch
+        {
+            private static void Postfix()
+            {
+                //ValheimPlusPlugin.Logger.LogFatal("Setting up pin data for deletion");
+                string playerName = Player.m_localPlayer.GetPlayerName();
+                Vector3 pos = Minimap.instance.ScreenToWorldPoint(ZInput.mousePosition);
+                ZPackage zpkg = new ZPackage();
+
+                if (!(ZNet.m_isServer))
+                {
+                    zpkg.Write(playerName);
+                    zpkg.Write(pos);
+
+                    //ValheimPlusPlugin.Logger.LogFatal($"Sending pin data for deletion: { playerName}");
+                    ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "VPlusMapDeletePin", new object[] { zpkg });
                 }
             }
         }

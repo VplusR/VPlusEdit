@@ -105,7 +105,7 @@ namespace ValheimPlus.GameClasses
         {
             ValheimPlusPlugin.Logger.LogInfo("Sending stored map pins to player ID: " + playerId);
 
-            foreach (var mapPinData in ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins)
+            foreach (var mapPinData in Game_Start_Patch.storedMapPins)
             {
                 ZPackage packageToSend = new ZPackage();
                 packageToSend.Write(mapPinData.SenderID);
@@ -128,21 +128,24 @@ namespace ValheimPlus.GameClasses
         {
             if (ZNet.instance.IsServer() && !ZNet.instance.IsLocalInstance())
             {       
-                List<MapPinData> mapData = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
+                List<MapPinData> mapData = Game_Start_Patch.storedMapPins;
 
                 if (Configuration.Current.Map.shareAllPins)
                 {
                     try
                     {
-                        using (StreamWriter writer = new StreamWriter(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, false, Encoding.UTF8))
+                        using (FileStream fileStream = new FileStream(Game_Start_Patch.PinDataFilePath, FileMode.Create, FileAccess.Write))
                         {
-                            foreach (var pin in mapData)
+                            using (StreamWriter writer = new StreamWriter(Game_Start_Patch.PinDataFilePath, false, Encoding.UTF8))
                             {
-                                string newLine = $"{pin.SenderID},{pin.SenderName},{pin.Position.x},{pin.Position.y},{pin.Position.z},{pin.PinType},{pin.PinName},{pin.KeepQuiet}";
-                                writer.WriteLine(newLine);
-                            }
+                                foreach (var pin in mapData)
+                                {
+                                    string newLine = $"{pin.SenderID},{pin.SenderName},{pin.Position.x},{pin.Position.y},{pin.Position.z},{pin.PinType},{pin.PinName},{pin.KeepQuiet}";
+                                    writer.WriteLine(newLine);
+                                }
 
-                            ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins Completed.");
+                                ValheimPlusPlugin.Logger.LogInfo("Saving Map Pins Completed.");
+                            }
                         }
                     }
                     catch (Exception ex)

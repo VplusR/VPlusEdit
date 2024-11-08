@@ -31,7 +31,7 @@ namespace ValheimPlus.GameClasses
         public static string PinDataFilePath = ValheimPlusPlugin.VPlusDataDirectoryPath +
                                                       Path.DirectorySeparatorChar +
                                                       ZNet.instance.GetWorldName() + "_mapPins.dat";
-        public static List<MapPinData> storedMapPins = new List<MapPinData>();        
+        public static List<MapPinData> storedMapPins = new List<MapPinData>();
 
         [UsedImplicitly]
         private static void Prefix()
@@ -39,6 +39,7 @@ namespace ValheimPlus.GameClasses
             ZRoutedRpc.instance.Register<ZPackage>("VPlusConfigSync", VPlusConfigSync.RPC_VPlusConfigSync);
             ZRoutedRpc.instance.Register<ZPackage>("VPlusMapSync", VPlusMapSync.RPC_VPlusMapSync);
             ZRoutedRpc.instance.Register<ZPackage>("VPlusMapAddPin", VPlusMapPinSync.RPC_VPlusMapAddPin);
+            ZRoutedRpc.instance.Register<ZPackage>("VPlusMapDeletePin", VPlusMapPinSync.RPC_VPlusMapDeletePin);
             ZRoutedRpc.instance.Register("VPlusAck", VPlusAck.RPC_VPlusAck);
         }
 
@@ -133,31 +134,19 @@ namespace ValheimPlus.GameClasses
     {
         private static void Prefix(Game __instance)
         {
-            List<MapPinData> pinList = new List<MapPinData>();
-            List<MapPinData> mapPinDataList = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
+            List<MapPinData> mapPinDataList = Game_Start_Patch.storedMapPins;
 
             if (ZRoutedRpc.instance.GetServerPeerID() == ZRoutedRpc.instance.m_id && Configuration.Current.Map.shareAllPins)
             {
                 try
                 {
-                    using (FileStream fileStream = new FileStream(ValheimPlus.GameClasses.Game_Start_Patch.PinDataFilePath, FileMode.Create, FileAccess.Write))
+                    using (FileStream fileStream = new FileStream(Game_Start_Patch.PinDataFilePath, FileMode.Create, FileAccess.Write))
                     {
                         using (StreamWriter writer = new StreamWriter(fileStream, Encoding.UTF8))
                         {
                             foreach (var mapPinData in mapPinDataList)
-                            {
-                                long senderID = mapPinData.SenderID;
-                                string senderName = mapPinData.SenderName;
-                                Vector3 pos = mapPinData.Position;
-                                int pinType = mapPinData.PinType;
-                                string pinName = mapPinData.PinName;
-                                bool keepQuiet = mapPinData.KeepQuiet;
-
-                                float posX = pos.x;
-                                float posY = pos.y;
-                                float posZ = pos.z;
-                                
-                                string line = $"{senderID},{senderName},{posX},{posY},{posZ},{pinType},{pinName},{keepQuiet}";
+                            { 
+                                string line = $"{mapPinData.SenderID},{mapPinData.SenderName},{mapPinData.Position.x},{mapPinData.Position.y},{mapPinData.Position.z},{mapPinData.PinType},{mapPinData.PinName},{mapPinData.KeepQuiet}";
                                 ValheimPlusPlugin.Logger.LogInfo($"String Line: {line}");
 
                                 // Write the line to the file

@@ -13,15 +13,15 @@ using static Minimap;
 namespace ValheimPlus.RPC
 {
     public class VPlusMapPinSync
-    {
+    { 
         /// <summary>
 		/// Sync Pin with clients via the server
         /// </summary>
         public static void RPC_VPlusMapAddPin(long sender, ZPackage mapPinPkg)
-        {            
+        {
             if (ZNet.m_isServer) // Server
             {
-                int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
+                //int count = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins.Count;
 
                 if (mapPinPkg == null)
                 {
@@ -138,7 +138,7 @@ namespace ValheimPlus.RPC
         }
 
         /// <summary>
-	/// Send the pin, attach client ID
+        /// Send the pin, attach client ID
         /// </summary>
         public static void SendMapPinToServer(Vector3 pos, Minimap.PinType type, string name, bool keepQuiet = false)
         {
@@ -164,5 +164,73 @@ namespace ValheimPlus.RPC
 
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "VPlusMapAddPin", new object[] { pkg });
         }
+        public static void RPC_VPlusMapDeletePin(long sender, ZPackage mapPinData)
+        {
+            //ValheimPlusPlugin.Logger.LogFatal("Received pin info");
+
+            float radius = Minimap.m_instance.m_removeRadius * (Minimap.m_instance.m_largeZoom * 2f);
+            string senderName = mapPinData.ReadString();
+            Vector3 pos = new Vector3
+            (
+                mapPinData.ReadSingle(), // X position
+                mapPinData.ReadSingle(), // Y position
+                mapPinData.ReadSingle()  // Z position
+            );
+
+            if (ZNet.m_isServer)
+            {
+                //ValheimPlusPlugin.Logger.LogFatal("Server: Read pins from package");
+                // Calls function to delete pin from Server pins in memory
+                DeletePinDataFromFile(senderName, pos, radius);
+            }
+            /*else // Start of client processing
+            {
+                ValheimPlusPlugin.Logger.LogFatal("Client: Read pins from package");
+                // Calls function to delete pin for client map
+                DeletePinDataForClient(senderName, pos, radius);
+            }*/
+        }
+
+        static void DeletePinDataFromFile(string senderName, Vector3 pos, float radius)
+        {
+            //ValheimPlusPlugin.Logger.LogFatal($"Got pin info from RPC {senderName}");
+            
+            List<MapPinData> pins = ValheimPlus.GameClasses.Game_Start_Patch.storedMapPins;
+
+            // Remove any pin that matches the given senderName and pos
+            int removedCount = pins.RemoveAll(pin => pin.SenderName == senderName && Vector3.Distance(pin.Position, pos) <= radius);
+
+            // Log the result of deletion
+            if (removedCount > 0)
+            {
+                //ValheimPlusPlugin.Logger.LogFatal($"Deleted {removedCount} pin(s) with sender '{senderName}' at position {pos}.");
+            }
+            else
+            {
+                //ValheimPlusPlugin.Logger.LogFatal($"No matching pins found for sender '{senderName}' at position {pos}.");
+            }
+        }
+
+        // this is untested as it requires 2 ppl to be online
+        // this deletes pin data for clients that are online
+        // TODO (if necessary) Save deleted pins to file and send file to clients as they connect so they can also be removed from their maps
+        /*static void DeletePinDataForClient(string senderName, Vector3 pos, float radius)
+        {
+            ValheimPlusPlugin.Logger.LogFatal("Client: Read pins from package");
+
+            List<PinData> mapPins = m_instance.m_pins;
+
+            // Remove pin from client's list
+            int removedCount = mapPins.RemoveAll(pin => pin.m_author == senderName && Vector3.Distance(pin.m_pos, pos) <= radius);
+
+            if (removedCount > 0)
+            {
+                ValheimPlusPlugin.Logger.LogFatal($"Client: Deleted {removedCount} pin(s).");
+            }
+            else
+            {
+                ValheimPlusPlugin.Logger.LogFatal("Client: No matching pins found to delete.");
+            }
+        }*/
     }
 }
