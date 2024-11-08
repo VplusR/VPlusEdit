@@ -139,40 +139,48 @@ namespace ValheimPlus.GameClasses
         }
     }
 
-
     /// <summary>
     /// Removes the forced un-equip of items in your main and off-hand when entering water.
     /// </summary>
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.UpdateEquipment))]
     public static class Player_Humanoid_UpdateEquipment
     {
-        private static MethodInfo method_Humanoid_HideHandItems = AccessTools.Method(typeof(Humanoid), nameof(Humanoid.HideHandItems));
-        private static MethodInfo method_HideHandItems = AccessTools.Method(typeof(Player_Humanoid_UpdateEquipment), nameof(Player_Humanoid_UpdateEquipment.HideHandItems));
+        private static readonly MethodInfo Method_Humanoid_HideHandItems =
+            AccessTools.Method(typeof(Humanoid), nameof(Humanoid.HideHandItems));
 
         [HarmonyTranspiler]
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        [UsedImplicitly]
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions,
+            ILGenerator generator)
         {
-            if (!Configuration.Current.Player.IsEnabled || !Configuration.Current.Player.dontUnequipItemsWhenSwimming) return instructions;
-
-            List<CodeInstruction> il = instructions.ToList();
-
-            for (int i = 0; i < il.Count; ++i)
+            var config = Configuration.Current.Player;
+            if (!config.IsEnabled || !config.dontUnequipItemsWhenSwimming) return instructions;
+            var il = instructions.ToList();
+            try
             {
-                if (il[i].Calls(method_Humanoid_HideHandItems))
-                {
-                    il[i - 1].opcode = OpCodes.Nop; // required to remove the this. index(0) stack value [ldarg.0]
-                    il[i].operand = method_HideHandItems;
-                    break;
-                }
+                var matcher = new CodeMatcher(il, generator);
+                var callPosition = matcher
+                    .MatchEndForward(
+                        new CodeMatch(OpCodes.Call, Method_Humanoid_HideHandItems),
+                        new CodeMatch(OpCodes.Pop) // discards the result of HideHandItems
+                    )
+                    .ThrowIfNotMatch("No match for `HideHandItems` followed by a `pop`")
+                    .Pos;
+
+                var thisPosition = matcher
+                    .MatchBack(useEnd: false, new CodeMatch(OpCodes.Ldarg_0))
+                    .ThrowIfNotMatch("No match for `this`")
+                    .Pos;
+
+                return matcher
+                    .RemoveInstructionsInRange(thisPosition, callPosition)
+                    .InstructionEnumeration();
             }
-
-            return il.AsEnumerable();
-        }
-
-        public static void HideHandItems()
-        {
+            catch (Exception e)
+            {
+                ValheimPlusPlugin.Logger.LogError($"Could not apply Player_Humanoid_UpdateEquipment!\n{e}");
+                return il;
+            }
         }
     }
-
-
 }
